@@ -1,5 +1,7 @@
-def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = [],color = 'turn',pos = 0):
+def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = [],color = 'turn',printRange = [0,-1]):
     import re
+    pos = printRange[0]
+    end = printRange[1]
     file.seek(pos)
     blank = re.compile(r'\s')
     mb = 0
@@ -12,7 +14,7 @@ def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = 
     while True:
         temp = file.read(16)
         tempHeader, tempBody, tempFooter = '','',''
-        if len(temp) == 0 :#or pos == end
+        if len(temp) == 0 :
             file.seek(0)
             break
         tempHeader = '%09x: ' % pos
@@ -161,6 +163,9 @@ def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = 
                     tempFooter += '.'
             if pos in posisions:
                 tempFooter += colors["clear"]
+            if pos == end:
+                file.read()
+                break
             pos += 1
         print(tempHeader + tempBody.ljust(50 +(4 + len(colors[color]))*tempFooter.count(colors["clear"])) + blank.sub(' ',tempFooter))
     print("%09x:" % pos)
@@ -190,7 +195,7 @@ def main():
     mainParser.add_argument('-b', action = "store", dest = 'byteSign', default = '', help = 'Set byte sign. If you set this print byte sign, when read multi-bytes character. (default:"")',)
     mainParser.add_argument('-d', action = "store", dest = "undecodeSign", default = 'X', help = 'Set un-decode sign. If you set this print un-decode sign, when catch decode exception. (default:"X")',)
     mainParser.add_argument('-p', action = "store",dest="pos",default = "",nargs = "+")
-    mainParser.add_argument('-Start', action = "store",dest="start",default = ['0'],nargs = 1)#--RANGE
+    mainParser.add_argument('--range', action = "store",dest="range",default = ['0','-1'],nargs = 2)#--RANGE
     mainParser.add_argument('-e', action = "store_true", dest = 'edit', default = False,help='Turn Editor mode on',)
     inputParser = argparse.ArgumentParser(prog='', prefix_chars='-+',)
     inputParserSwitch = inputParser.add_mutually_exclusive_group()
@@ -202,11 +207,14 @@ def main():
     editMode.add_argument('-s', action = "store_true",dest = 'save', default = False, help='Save.',)
     editMode.add_argument('-a',action = "store",dest = 'append',nargs = 1, help = 'Set append mode.')
     editMode.add_argument('-0',action = "store",dest = 'zero',nargs = 2, help = 'Set zero mode.')
-    inputParser.add_argument('-Start', action = "store",dest="start",default = ['0'],nargs = 1)#--RANGE
+    inputParser.add_argument('--range', action = "store",dest="range",default = ['0','-1'],nargs = 2)#--RANGE
     inputParser.add_argument('-p', action = "store",dest="pos",default = "",nargs = "+")
     args = mainParser.parse_args()
     editor = args.edit
-    start = int(args.start[0],16)
+    try: printRange = [int(args.range[i],16) for i in range(2)]
+    except ValueError:
+        printRange = [0,-1]
+        print('[ERROR] Input arguments as hex syntax.')
     posisions = expand(args.pos)
     try:
         with open(args.file,'rb') as f:
@@ -217,106 +225,109 @@ def main():
         tempFile = io.BytesIO()
         isNewFile = True
     while True:
-        try:
-            size = len(tempFile.read())
-            tempFile.seek(0)
-            if editor:
-                printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,args.color,start)
-                inputArgs = inputParser.parse_args(input("[EDIT] >>> ").split())
-                editor = inputArgs.edit
-                posisions = expand(inputArgs.pos)
-                start = int(inputArgs.start[0],16)
-                if inputArgs.insert:
-                    posisions.append(int(inputArgs.insert[0],16))
-                    if int(inputArgs.insert[1],16) <= 255:
-                        b = bytearray()
-                        b.append(int(inputArgs.insert[1],16))
-                        newFile = io.BytesIO()
-                        newFile.write(tempFile.read(int(inputArgs.insert[0],16)))
-                        newFile.write(b)
-                        newFile.write(tempFile.read())
-                        newFile.seek(0)
-                        tempFile.seek(0)
-                        tempFile = newFile
-                elif inputArgs.replace:
-                    if  int(inputArgs.replace[0],16) > size and int(inputArgs.replace[1],16) >= 255: print('[ERROR] First argument out of file size.\n[ERROR] Please input second argument in range from 00 to ff.')
-                    elif int(inputArgs.replace[0],16) > size: print('[ERROR] First argument out of file size.')
-                    else:
-                        posisions.append(int(inputArgs.replace[0],16))
-                        if int(inputArgs.replace[1],16) <= 255:
-                            b = bytearray()
-                            b.append(int(inputArgs.replace[1],16))
-                            newFile = io.BytesIO()
-                            newFile.write(tempFile.read(int(inputArgs.replace[0],16)))
-                            newFile.write(b)
-                            tempFile.read(1)
-                            newFile.write(tempFile.read())
-                            newFile.seek(0)
-                            tempFile.seek(0)
-                            tempFile = newFile
-                        else: print('[ERROR] Please input second argument in range from 00 to ff.' )
-                elif inputArgs.append:
-                    if int(inputArgs.append[0],16) <= 255:
-                        b = bytearray()
-                        b.append(int(inputArgs.append[0],16))
-                        newFile = io.BytesIO()
-                        newFile.write(tempFile.read())
-                        newFile.write(b)
-                        newFile.seek(0)
-                        tempFile.seek(0)
-                        tempFile = newFile
-                elif inputArgs.delete:
+        # try:
+        size = len(tempFile.read())
+        tempFile.seek(0)
+        if editor:
+            printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,args.color,printRange)
+            inputArgs = inputParser.parse_args(input("[EDIT] >>> ").split())
+            editor = inputArgs.edit
+            posisions = expand(inputArgs.pos)
+            try: printRange = [int(inputArgs.range[i],16) for i in range(2)]
+            except ValueError:
+                printRange = [0,-1]
+                print('[ERROR] Input arguments as hex syntax.')
+            if inputArgs.insert:
+                posisions.append(int(inputArgs.insert[0],16))
+                if int(inputArgs.insert[1],16) <= 255:
+                    b = bytearray()
+                    b.append(int(inputArgs.insert[1],16))
                     newFile = io.BytesIO()
-                    newFile.write(tempFile.read(int(inputArgs.delete[0],16)))
-                    tempFile.read(1)
+                    newFile.write(tempFile.read(int(inputArgs.insert[0],16)))
+                    newFile.write(b)
                     newFile.write(tempFile.read())
                     newFile.seek(0)
                     tempFile.seek(0)
                     tempFile = newFile
-                elif inputArgs.zero:
+            elif inputArgs.replace:
+                if  int(inputArgs.replace[0],16) > size and int(inputArgs.replace[1],16) >= 255: print('[ERROR] First argument out of file size.\n[ERROR] Please input second argument in range from 00 to ff.')
+                elif int(inputArgs.replace[0],16) > size: print('[ERROR] First argument out of file size.')
+                else:
+                    posisions.append(int(inputArgs.replace[0],16))
+                    if int(inputArgs.replace[1],16) <= 255:
+                        b = bytearray()
+                        b.append(int(inputArgs.replace[1],16))
+                        newFile = io.BytesIO()
+                        newFile.write(tempFile.read(int(inputArgs.replace[0],16)))
+                        newFile.write(b)
+                        tempFile.read(1)
+                        newFile.write(tempFile.read())
+                        newFile.seek(0)
+                        tempFile.seek(0)
+                        tempFile = newFile
+                    else: print('[ERROR] Please input second argument in range from 00 to ff.' )
+            elif inputArgs.append:
+                if int(inputArgs.append[0],16) <= 255:
+                    b = bytearray()
+                    b.append(int(inputArgs.append[0],16))
+                    newFile = io.BytesIO()
+                    newFile.write(tempFile.read())
+                    newFile.write(b)
+                    newFile.seek(0)
+                    tempFile.seek(0)
+                    tempFile = newFile
+            elif inputArgs.delete:
+                newFile = io.BytesIO()
+                newFile.write(tempFile.read(int(inputArgs.delete[0],16)))
+                tempFile.read(1)
+                newFile.write(tempFile.read())
+                newFile.seek(0)
+                tempFile.seek(0)
+                tempFile = newFile
+            elif inputArgs.zero:
+                try:
+                    st = int(inputArgs.zero[0],16)
+                    end = st + int(inputArgs.zero[1],16)
+                    if st <= size:
+                        posisions.extend([i for i in range(st, end)])
+                        newFile = io.BytesIO()
+                        newFile.write(tempFile.read(st))
+                        newFile.write(bytearray(int(inputArgs.zero[1],16)))
+                        newFile.write(tempFile.read())
+                        newFile.seek(0)
+                        tempFile.seek(0)
+                        tempFile = newFile
+                except Exception: pass
+            elif inputArgs.save:
+                if isNewFile:
                     try:
-                        st = int(inputArgs.zero[0],16)
-                        end = st + int(inputArgs.zero[1],16)
-                        if st <= size:
-                            posisions.extend([i for i in range(st, end)])
-                            newFile = io.BytesIO()
-                            newFile.write(tempFile.read(st))
-                            newFile.write(bytearray(int(inputArgs.zero[1],16)))
-                            newFile.write(tempFile.read())
-                            newFile.seek(0)
-                            tempFile.seek(0)
-                            tempFile = newFile
-                    except Exception: pass
-                elif inputArgs.save:
-                    if isNewFile:
-                        try:
-                            outFile = open(args.file,'wb')
-                            outFile.write(tempFile.read())
-                        finally:
-                            outFile.close()
-                            print("Saveed successfully...")
-                            break
-                    else:
-                        while True:
-                            readline.insert_text(args.file)
-                            saveAs = input("Save as ... > ")
-                            if saveAs == '': saveAs = args.file
-                            if saveAs == args.file:
-                                overwrite = input('Are you sure to overwrite file? (yes:1, no:2) : ')
-                                if overwrite in {'1','yes','YES','Yes','True','true','y'}: break
-                                else: pass
-                            else: break
-                        try:
-                            outFile = open(saveAs,'wb')
-                            outFile.write(tempFile.read())
-                        finally:
-                            outFile.close()
-                            print("Saveed successfully...")
-                            break
-            elif not editor and inputArgs is None:
-                printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,args.color,start)
-                break
-            else: break
-        except Exception: print("[ERROR]")
+                        outFile = open(args.file,'wb')
+                        outFile.write(tempFile.read())
+                    finally:
+                        outFile.close()
+                        print("Saveed successfully...")
+                        break
+                else:
+                    while True:
+                        readline.insert_text(args.file)
+                        saveAs = input("Save as ... > ")
+                        if saveAs == '': saveAs = args.file
+                        if saveAs == args.file:
+                            overwrite = input('Are you sure to overwrite file? (yes:1, no:2) : ')
+                            if overwrite in {'1','yes','YES','Yes','True','true','y'}: break
+                            else: pass
+                        else: break
+                    try:
+                        outFile = open(saveAs,'wb')
+                        outFile.write(tempFile.read())
+                    finally:
+                        outFile.close()
+                        print("Saveed successfully...")
+                        break
+        elif not editor and inputArgs is None:
+            printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,args.color,printRange)
+            break
+        else: break
+        # except Exception: print("[ERROR]")
 if __name__ == '__main__':
     main()
