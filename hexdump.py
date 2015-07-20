@@ -1,4 +1,4 @@
-def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = [],color = 'turn',printRange = [0,-1]):
+def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = [],colors = ['',''],printRange = [0,-1]):
     import re
     pos = printRange[0]
     end = printRange[1]
@@ -9,7 +9,6 @@ def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = 
     modeChange = False
     modes = {'ascii':b'\x1b(B','roma':b'\x1b(J','JIS78':b'\x1b$@','JIS83':b'\x1b$B','JIS90':b'\x1b$(D','JIS2004-1':b'\x1b$(Q','JIS2004-2':b'\x1b$(P'}
     mode = modes['ascii']
-    colors = {'turn':'\033[7m','clear': '\033[0m','black': '\033[30m','red': '\033[31m','green': '\033[32m','yellow': '\033[33m','blue': '\033[34m','purple': '\033[35m','cyan': '\033[36m','white': '\033[37m'}
     if coding in {'ascii', 'ASCII', 'Ascii'}: coding = None
     while True:
         temp = file.read(16)
@@ -20,8 +19,8 @@ def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = 
         tempHeader = '%09x: ' % pos
         for b in temp:
             if pos in posisions:
-                tempBody += " " + colors[color] + "%02x\033[0m" % b
-                tempFooter += colors[color]
+                tempBody += " " + colors[0] + "%02x" % b +colors[1]
+                tempFooter += colors[0]
             else:
                 tempBody += " %02x" % b
             mbBin.append(b)
@@ -162,15 +161,16 @@ def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = 
                 else:
                     tempFooter += '.'
             if pos in posisions:
-                tempFooter += colors["clear"]
+                tempFooter += colors[1]
             if pos == end:
                 file.read()
                 break
             pos += 1
-        print(tempHeader + tempBody.ljust(50 +(4 + len(colors[color]))*tempFooter.count(colors["clear"])) + blank.sub(' ',tempFooter))
+        print(tempHeader + tempBody.ljust(50 +(len(colors[0]) + len(colors[1]))*tempFooter.count(colors[1])) + blank.sub(' ',tempFooter))
     print("%09x:" % pos)
 def main():
     import sys, argparse, readline ,io
+    colorDict = {'turn':'\033[7m','clear': '\033[0m','black': '\033[30m','red': '\033[31m','green': '\033[32m','yellow': '\033[33m','blue': '\033[34m','purple': '\033[35m','cyan': '\033[36m','white': '\033[37m'}
     def expand(list):
         result = []
         for item in list:
@@ -191,7 +191,7 @@ def main():
     mainParser = argparse.ArgumentParser(prog='python3 ' + sys.argv[0],description = AppDescription, prefix_chars='-',)
     mainParser.add_argument('file', action = "store", help = 'file input.',)
     mainParser.add_argument('-c', action = "store", dest = 'coding', default = None, help = 'Set encoding type.(default:ascii)',)
-    mainParser.add_argument('-color', action = "store", dest = 'color', default = 'turn', help = 'Set color.(default:red)',)
+    mainParser.add_argument('--color', action = "store", dest = 'color', default = 'turn', help = 'Set color.',)
     mainParser.add_argument('-b', action = "store", dest = 'byteSign', default = '', help = 'Set byte sign. If you set this print byte sign, when read multi-bytes character. (default:"")',)
     mainParser.add_argument('-d', action = "store", dest = "undecodeSign", default = 'X', help = 'Set un-decode sign. If you set this print un-decode sign, when catch decode exception. (default:"X")',)
     mainParser.add_argument('-p', action = "store",dest="pos",default = "",nargs = "+")
@@ -211,6 +211,10 @@ def main():
     inputParser.add_argument('-p', action = "store",dest="pos",default = "",nargs = "+")
     args = mainParser.parse_args()
     editor = args.edit
+    if args.color in colorDict: colors = [colorDict[args.color] , colorDict['clear']]
+    else:
+        print("[ERROR] Unknown clolor. You can pick color from\n\t" +", ".join(colorDict.keys()) + '.' )
+        colors = [colorDict['turn'],colorDict['clear']]
     try: printRange = [int(args.range[i],16) for i in range(2)]
     except ValueError:
         printRange = [0,-1]
@@ -229,7 +233,7 @@ def main():
             size = len(tempFile.read())
             tempFile.seek(0)
             if editor:
-                printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,args.color,printRange)
+                printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,colors,printRange)
                 inputArgs = inputParser.parse_args(input("[EDIT] >>> ").split())
                 editor = inputArgs.edit
                 posisions = expand(inputArgs.pos)
@@ -325,7 +329,7 @@ def main():
                             print("Saveed successfully...")
                             break
             elif not editor and inputArgs is None:
-                printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,args.color,printRange)
+                printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,colors,printRange)
                 break
             else: break
         except Exception: print("[ERROR]")
