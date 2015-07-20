@@ -1,5 +1,6 @@
-def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = [],colors = ['',''],printRange = [0,-1]):
+def makeDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = [],colors = ['',''],printRange = [0,-1],printEnd = '\n'):
     import re
+    result = ''
     pos = printRange[0]
     end = printRange[1]
     file.seek(pos)
@@ -166,8 +167,8 @@ def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = 
                 file.read()
                 break
             pos += 1
-        print(tempHeader + tempBody.ljust(50 +(len(colors[0]) + len(colors[1]))*tempFooter.count(colors[1])) + blank.sub(' ',tempFooter))
-    print("%09x:" % pos)
+        result += tempHeader + tempBody.ljust(50 +(len(colors[0]) + len(colors[1]))*tempFooter.count(colors[1])) + blank.sub(' ',tempFooter) + printEnd
+    return result + "%09x:" % pos
 def main():
     import sys, argparse, readline ,io
     colorDict = {'turn':'\033[7m','clear': '\033[0m','black': '\033[30m','red': '\033[31m','green': '\033[32m','yellow': '\033[33m','blue': '\033[34m','purple': '\033[35m','cyan': '\033[36m','white': '\033[37m'}
@@ -233,7 +234,7 @@ def main():
             size = len(tempFile.read())
             tempFile.seek(0)
             if editor:
-                printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,colors,printRange)
+                print(makeDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,colors,printRange))
                 inputArgs = inputParser.parse_args(input("[EDIT] >>> ").split())
                 editor = inputArgs.edit
                 posisions = expand(inputArgs.pos)
@@ -329,7 +330,7 @@ def main():
                             print("Saveed successfully...")
                             break
             elif not editor and inputArgs is None:
-                printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,colors,printRange)
+                print(makeDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,colors,printRange))
                 break
             else: break
         except Exception: print("[ERROR]")
