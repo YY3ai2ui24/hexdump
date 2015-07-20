@@ -1,5 +1,7 @@
-def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = [],color = 'turn',pos = 0):
+def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = [],color = 'turn',printRange = [0,-1]):
     import re
+    pos = printRange[0]
+    end = printRange[1]
     file.seek(pos)
     blank = re.compile(r'\s')
     mb = 0
@@ -12,7 +14,7 @@ def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = 
     while True:
         temp = file.read(16)
         tempHeader, tempBody, tempFooter = '','',''
-        if len(temp) == 0 :#or pos == end
+        if len(temp) == 0 :
             file.seek(0)
             break
         tempHeader = '%09x: ' % pos
@@ -161,6 +163,9 @@ def printDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = 
                     tempFooter += '.'
             if pos in posisions:
                 tempFooter += colors["clear"]
+            if pos == end:
+                file.read()
+                break
             pos += 1
         print(tempHeader + tempBody.ljust(50 +(4 + len(colors[color]))*tempFooter.count(colors["clear"])) + blank.sub(' ',tempFooter))
     print("%09x:" % pos)
@@ -190,7 +195,7 @@ def main():
     mainParser.add_argument('-b', action = "store", dest = 'byteSign', default = '', help = 'Set byte sign. If you set this print byte sign, when read multi-bytes character. (default:"")',)
     mainParser.add_argument('-d', action = "store", dest = "undecodeSign", default = 'X', help = 'Set un-decode sign. If you set this print un-decode sign, when catch decode exception. (default:"X")',)
     mainParser.add_argument('-p', action = "store",dest="pos",default = "",nargs = "+")
-    mainParser.add_argument('-Start', action = "store",dest="start",default = ['0'],nargs = 1)#--RANGE
+    mainParser.add_argument('--range', action = "store",dest="range",default = ['0','-1'],nargs = 2)#--RANGE
     mainParser.add_argument('-e', action = "store_true", dest = 'edit', default = False,help='Turn Editor mode on',)
     inputParser = argparse.ArgumentParser(prog='', prefix_chars='-+',)
     inputParserSwitch = inputParser.add_mutually_exclusive_group()
@@ -202,11 +207,14 @@ def main():
     editMode.add_argument('-s', action = "store_true",dest = 'save', default = False, help='Save.',)
     editMode.add_argument('-a',action = "store",dest = 'append',nargs = 1, help = 'Set append mode.')
     editMode.add_argument('-0',action = "store",dest = 'zero',nargs = 2, help = 'Set zero mode.')
-    inputParser.add_argument('-Start', action = "store",dest="start",default = ['0'],nargs = 1)#--RANGE
+    inputParser.add_argument('--range', action = "store",dest="range",default = ['0','-1'],nargs = 2)#--RANGE
     inputParser.add_argument('-p', action = "store",dest="pos",default = "",nargs = "+")
     args = mainParser.parse_args()
     editor = args.edit
-    start = int(args.start[0],16)
+    try: printRange = [int(args.range[i],16) for i in range(2)]
+    except ValueError:
+        printRange = [0,-1]
+        print('[ERROR] Input arguments as hex syntax.')
     posisions = expand(args.pos)
     try:
         with open(args.file,'rb') as f:
@@ -221,11 +229,14 @@ def main():
             size = len(tempFile.read())
             tempFile.seek(0)
             if editor:
-                printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,args.color,start)
+                printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,args.color,printRange)
                 inputArgs = inputParser.parse_args(input("[EDIT] >>> ").split())
                 editor = inputArgs.edit
                 posisions = expand(inputArgs.pos)
-                start = int(inputArgs.start[0],16)
+                try: printRange = [int(inputArgs.range[i],16) for i in range(2)]
+                except ValueError:
+                    printRange = [0,-1]
+                    print('[ERROR] Input arguments as hex syntax.')
                 if inputArgs.insert:
                     posisions.append(int(inputArgs.insert[0],16))
                     if int(inputArgs.insert[1],16) <= 255:
@@ -314,7 +325,7 @@ def main():
                             print("Saveed successfully...")
                             break
             elif not editor and inputArgs is None:
-                printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,args.color,start)
+                printDumpList(tempFile,args.coding,args.byteSign,args.undecodeSign,posisions,args.color,printRange)
                 break
             else: break
         except Exception: print("[ERROR]")
