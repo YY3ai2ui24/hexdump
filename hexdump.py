@@ -10,6 +10,7 @@ def makeDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = [
     modeChange = False
     modes = {'ascii':b'\x1b(B','roma':b'\x1b(J','JIS78':b'\x1b$@','JIS83':b'\x1b$B','JIS90':b'\x1b$(D','JIS2004-1':b'\x1b$(Q','JIS2004-2':b'\x1b$(P'}
     mode = modes['ascii']
+    row = 1j
     if coding in {'ascii', 'ASCII', 'Ascii'}: coding = None
     while True:
         temp = file.read(16)
@@ -17,7 +18,7 @@ def makeDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = [
         if len(temp) == 0 :
             file.seek(0)
             break
-        tempHeader = '%09x: ' % pos
+        tempHeader = '%09x: ' % pos if not row in posisions else colors[0] + '%09x' % pos + colors[1] + ': '
         for b in temp:
             if pos in posisions:
                 tempBody += " " + colors[0] + "%02x" % b +colors[1]
@@ -168,14 +169,18 @@ def makeDumpList(file,coding = None,biteSign = '',decodeSign = "X",posisions = [
                 break
             pos += 1
         result += tempHeader + tempBody.ljust(50 +(len(colors[0]) + len(colors[1]))*tempFooter.count(colors[1])) + blank.sub(' ',tempFooter) + printEnd
-    return result + "%09x:" % pos
+        row += 1j
+    lastRow = '%09x: ' % pos if not row in posisions else colors[0] + '%09x' % pos + colors[1] + ': '
+    return result + lastRow
 def main():
     import sys, argparse, readline ,io
     colorDict = {'turn':'\033[7m','clear': '\033[0m','black': '\033[30m','red': '\033[31m','green': '\033[32m','yellow': '\033[33m','blue': '\033[34m','purple': '\033[35m','cyan': '\033[36m','white': '\033[37m'}
     def expand(list):
         result = []
         for item in list:
-            try: result.append(int(item,16))
+            try:
+                if item[0] == 'R': result.append(int(item[1:],16) * 1j)
+                else: result.append(int(item,16))
             except ValueError:
                 try:
                     if '~' in item:
@@ -196,7 +201,7 @@ def main():
     mainParser.add_argument('-b', action = "store", dest = 'byteSign', default = '', help = 'Set byte sign. If you set this print byte sign, when read multi-bytes character. (default:"")',)
     mainParser.add_argument('-d', action = "store", dest = "undecodeSign", default = 'X', help = 'Set un-decode sign. If you set this print un-decode sign, when catch decode exception. (default:"X")',)
     mainParser.add_argument('-p', action = "store",dest="pos",default = "",nargs = "+")
-    mainParser.add_argument('--range', action = "store",dest="range",default = ['0','-1'],nargs = 2)#--RANGE
+    mainParser.add_argument('--range', action = "store",dest="range",default = ['0','-1'],nargs = 2)
     mainParser.add_argument('-e', action = "store_true", dest = 'edit', default = False,help='Turn Editor mode on',)
     inputParser = argparse.ArgumentParser(prog='', prefix_chars='-+',)
     inputParserSwitch = inputParser.add_mutually_exclusive_group()
@@ -208,7 +213,7 @@ def main():
     editMode.add_argument('-s', action = "store_true",dest = 'save', default = False, help='Save.',)
     editMode.add_argument('-a',action = "store",dest = 'append',nargs = 1, help = 'Set append mode.')
     editMode.add_argument('-0',action = "store",dest = 'zero',nargs = 2, help = 'Set zero mode.')
-    inputParser.add_argument('--range', action = "store",dest="range",default = ['0','-1'],nargs = 2)#--RANGE
+    inputParser.add_argument('--range', action = "store",dest="range",default = ['0','-1'],nargs = 2)
     inputParser.add_argument('-p', action = "store",dest="pos",default = "",nargs = "+")
     args = mainParser.parse_args()
     editor = args.edit
