@@ -3,6 +3,10 @@
 teminalで動く16進バイナリダンプエディタ
 
 # webapp.py
-起動する前にbottleモジュールとbootstrapの中身のファイルをフォルダに入れる。
+## 準備
+* 起動する前にbottleモジュールをインストール
+* bootstrapの中身のフォルダをviewsフォルダに入れる。
+
+## やること
 indexでファイルをアップロードして、そのファイルを編集する。
 editor/filenameでfilename編集できる。
