@@ -1,7 +1,16 @@
-try: from bottle import get, post, route, run, static_file, response, abort, redirect, request, template, os, view
-except ImportError:print("bottle package is not installed.\nPlease run afert install bottle package.")
 import os
-currentDirPass = os.path.dirname(__file__)
+from socket import gethostname
+currentDirPass = os.path.abspath(os.path.dirname(__file__))
+os.chdir(currentDirPass)
+def install_bottle():
+    print('Downloading bottle...')
+    from urllib.request import urlretrieve
+    urlretrieve('https://raw.githubusercontent.com/bottlepy/bottle/master/bottle.py', currentDirPass + '/bottle.py')
+try:
+    from bottle import get, post, route, run, static_file, response, abort, redirect, request, template, os, view
+except ImportError:
+    install_bottle()
+    from bottle import get, post, route, run, static_file, response, abort, redirect, request, template, os, view
 #ダウンロード
 @route('/download/<filename:path>')
 def download(filename):
