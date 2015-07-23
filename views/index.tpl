@@ -54,9 +54,9 @@
   		</div>
   		<input type="submit" name="csv_up" class="btn btn-primary" value="upload">
   	</form>
-  	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script><!-- jquery 本体-->
-  	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script><!-- jquery-UI 本体-->
-  	<script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+  	<script src="/views/jQuery/jquery.min.js"></script><!-- jquery 本体-->
+  	<script src="/views/jQuery/jquery-ui.min.js"></script><!-- jquery-UI 本体-->
+    <script src="/views/jQuery/bootstrap.min.js"></script>
   	<script type="text/javascript">
   	$(function(){
   		$('#file_input').change(function() {
